@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luna's Ocean Math Adventure 🌊</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+        --ocean-1: #0077b6;
+        --ocean-2: #00b4d8;
+        --ocean-3: #48cae4;
+        --ocean-4: #90e0ef;
+        --sand:   #ffd166;
+        --coral:  #ff6b9d;
+        --star:   #ffd60a;
+        --good:   #06d6a0;
+        --bad:    #ef476f;
+    }
+
+    html, body {
+        height: 100%;
+        overflow: hidden;
+        font-family: 'Comic Sans MS', 'Chalkboard SE', 'Segoe UI', system-ui, sans-serif;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+        background: linear-gradient(180deg,
+            #caf0f8 0%, #90e0ef 25%, #48cae4 55%, #00b4d8 85%, #0077b6 100%);
+        position: relative;
+    }
+
+    /* ============ Animated Background ============ */
+    .bubbles { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+    .bubble {
+        position: absolute;
+        bottom: -40px;
+        background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(255,255,255,0.2));
+        border-radius: 50%;
+        animation: rise linear infinite;
+    }
+    @keyframes rise {
+        to { transform: translateY(-110vh) translateX(var(--drift, 20px)); opacity: 0; }
+    }
+
+    .waves {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        height: 120px; pointer-events: none; z-index: 1;
+        background: linear-gradient(180deg, transparent, rgba(0,119,182,0.25));
+    }
+
+    /* ============ Header ============ */
+    header {
+        position: relative; z-index: 5;
+        padding: 14px 24px;
+        display: flex; justify-content: space-between; align-items: center;
+        color: #fff;
+        text-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        background: rgba(0,119,182,0.55);
+        backdrop-filter: blur(6px);
+        border-bottom: 3px solid rgba(255,255,255,0.35);
+    }
+    header h1 {
+        font-size: clamp(18px, 2.5vw, 26px);
+        letter-spacing: 1px;
+    }
+    .stats {
+        display: flex; gap: 14px; align-items: center;
+        font-size: clamp(14px, 1.8vw, 18px);
+        font-weight: bold;
+    }
+    .stat-pill {
+        background: rgba(255,255,255,0.2);
+        border: 2px solid rgba(255,255,255,0.5);
+        border-radius: 18px;
+        padding: 4px 14px;
+    }
+    .stat-pill.score { background: rgba(255,214,10,0.35); border-color: var(--star); }
+    .stat-pill.lives { background: rgba(239,71,111,0.3); border-color: var(--bad); }
+
+    /* ============ Main Stage ============ */
+    main {
+        position: relative; z-index: 4;
+        height: calc(100vh - 70px);
+        display: flex; align-items: center; justify-content: center;
+        padding: 20px;
+    }
+    .screen { display: none; width: 100%; max-width: 960px; }
+    .screen.active { display: block; animation: fadeIn 0.5s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; } }
+
+    /* ============ Home Screen ============ */
+    #home { text-align: center; color: #fff; text-shadow: 0 3px 10px rgba(0,0,0,0.3); }
+    #home .title {
+        font-size: clamp(32px, 6vw, 62px);
+        margin-bottom: 8px;
+        animation: bob 3s ease-in-out infinite;
+    }
+    #home .subtitle {
+        font-size: clamp(16px, 2.2vw, 22px);
+        margin-bottom: 40px;
+        opacity: 0.95;
+    }
+    @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+    .mode-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .mode-card {
+        background: rgba(255,255,255,0.92);
+        color: #0077b6;
+        padding: 22px 18px;
+        border-radius: 22px;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        text-shadow: none;
+        border: 4px solid transparent;
+    }
+    .mode-card:hover {
+        transform: translateY(-6px) scale(1.03);
+        box-shadow: 0 14px 28px rgba(0,0,0,0.3);
+        border-color: var(--sand);
+    }
+    .mode-card .emoji { font-size: 54px; display: block; margin-bottom: 8px; }
+    .mode-card h3 { font-size: 20px; margin-bottom: 6px; color: var(--ocean-1); }
+    .mode-card p { font-size: 14px; color: #555; }
+
+    /* ============ Game Screens ============ */
+    .game-box {
+        background: rgba(255,255,255,0.94);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+        border: 4px solid rgba(255,255,255,0.8);
+    }
+    .game-box h2 {
+        color: var(--ocean-1);
+        font-size: clamp(22px, 3vw, 30px);
+        margin-bottom: 6px;
+        text-align: center;
+    }
+    .game-box .hint {
+        text-align: center; color: #555;
+        font-size: 15px; margin-bottom: 18px;
+    }
+
+    .question {
+        text-align: center;
+        font-size: clamp(32px, 5vw, 48px);
+        color: var(--ocean-1);
+        font-weight: bold;
+        margin: 14px 0 20px 0;
+        letter-spacing: 2px;
+    }
+    .question .op { color: var(--coral); margin: 0 6px; }
+    .question .blank {
+        display: inline-block;
+        border-bottom: 4px solid var(--sand);
+        min-width: 80px;
+        color: var(--coral);
+    }
+
+    /* ============ Options ============ */
+    .options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+        gap: 12px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .opt {
+        background: linear-gradient(180deg, #fff 0%, #caf0f8 100%);
+        color: var(--ocean-1);
+        border: 3px solid var(--ocean-2);
+        border-radius: 14px;
+        padding: 16px 0;
+        font-size: clamp(22px, 3vw, 32px);
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        font-family: inherit;
+    }
+    .opt:hover:not(:disabled) {
+        transform: translateY(-3px);
+        background: linear-gradient(180deg, #ffd166 0%, #ff9e00 100%);
+        color: #fff;
+        border-color: var(--sand);
+    }
+    .opt.correct {
+        background: linear-gradient(180deg, #06d6a0, #048a72);
+        color: #fff;
+        border-color: #048a72;
+        animation: pop 0.4s ease;
+    }
+    .opt.wrong {
+        background: linear-gradient(180deg, #ef476f, #b8002f);
+        color: #fff;
+        border-color: #b8002f;
+        animation: shake 0.4s ease;
+    }
+    .opt:disabled { cursor: not-allowed; opacity: 0.6; }
+    @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+    @keyframes shake {
+        0%,100% { transform: translateX(0); }
+        25% { transform: translateX(-8px); } 75% { transform: translateX(8px); }
+    }
+
+    .feedback {
+        text-align: center;
+        min-height: 40px;
+        margin-top: 16px;
+        font-size: 20px;
+        font-weight: bold;
+    }
+    .feedback.good { color: var(--good); }
+    .feedback.bad { color: var(--bad); }
+
+    .progress-bar {
+        width: 100%;
+        height: 12px;
+        background: rgba(0,119,182,0.2);
+        border-radius: 10px;
+        margin-top: 18px;
+        overflow: hidden;
+    }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--sand), var(--coral));
+        width: 0%;
+        transition: width 0.4s ease;
+        border-radius: 10px;
+    }
+
+    .btn {
+        background: linear-gradient(180deg, var(--sand), #ff9e00);
+        color: #fff;
+        border: none;
+        padding: 14px 34px;
+        font-size: 20px;
+        border-radius: 30px;
+        cursor: pointer;
+        font-family: inherit;
+        font-weight: bold;
+        box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+        transition: transform 0.15s ease;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .btn:hover { transform: translateY(-2px) scale(1.04); }
+    .btn.secondary {
+        background: linear-gradient(180deg, var(--ocean-3), var(--ocean-1));
+    }
+    .btn-row { text-align: center; margin-top: 16px; display: flex; gap: 12px; justify-content: center; }
+
+    /* ============ Pair-Match Grid ============ */
+    .pair-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        max-width: 480px;
+        margin: 0 auto;
+    }
+    .card {
+        aspect-ratio: 1;
+        background: linear-gradient(135deg, var(--ocean-3), var(--ocean-2));
+        border: 3px solid #fff;
+        border-radius: 14px;
+        font-size: clamp(24px, 4vw, 38px);
+        color: #fff;
+        font-weight: bold;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        transition: all 0.2s ease;
+        font-family: inherit;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    .card:hover:not(.matched):not(.selected) {
+        transform: scale(1.05);
+        background: linear-gradient(135deg, var(--sand), #ff9e00);
+    }
+    .card.selected {
+        background: linear-gradient(135deg, var(--coral), #c9184a);
+        transform: scale(1.08);
+    }
+    .card.matched {
+        background: linear-gradient(135deg, var(--good), #048a72);
+        cursor: default;
+        opacity: 0.7;
+        animation: pop 0.4s ease;
+    }
+    .card.miss { animation: shake 0.4s ease; }
+
+    /* ============ Celebration ============ */
+    .celebrate {
+        position: fixed; inset: 0; z-index: 100;
+        background: rgba(0,0,0,0.6);
+        display: none;
+        align-items: center; justify-content: center;
+        backdrop-filter: blur(4px);
+    }
+    .celebrate.show { display: flex; animation: fadeIn 0.4s ease; }
+    .celebrate-box {
+        background: linear-gradient(180deg, #fff 0%, #ffd166 100%);
+        padding: 40px 50px;
+        border-radius: 30px;
+        text-align: center;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+        max-width: 500px;
+        animation: pop 0.5s ease;
+    }
+    .celebrate-box h2 {
+        font-size: 36px;
+        color: var(--coral);
+        margin-bottom: 10px;
+    }
+    .celebrate-box .big-emoji {
+        font-size: 80px;
+        display: block;
+        margin-bottom: 14px;
+        animation: bob 1.5s ease-in-out infinite;
+    }
+    .celebrate-box p { font-size: 18px; color: #555; margin-bottom: 20px; }
+
+    .stars-earned {
+        font-size: 40px;
+        margin: 10px 0;
+        letter-spacing: 6px;
+    }
+    .stars-earned .filled { color: var(--star); animation: pop 0.5s ease; }
+    .stars-earned .empty { color: #ddd; }
+
+    /* Confetti */
+    .confetti {
+        position: fixed; top: -10px;
+        width: 10px; height: 14px;
+        z-index: 101;
+        animation: fall 3s linear forwards;
+    }
+    @keyframes fall {
+        to { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+
+    /* ============ Responsive ============ */
+    @media (max-width: 600px) {
+        .pair-grid { grid-template-columns: repeat(3, 1fr); }
+        header { padding: 10px 12px; }
+        .stats { gap: 8px; }
+        .game-box { padding: 18px; }
+    }
+</style>
+</head>
+<body>
+
+<!-- ===== Background ===== -->
+<div class="bubbles" id="bubbles"></div>
+<div class="waves"></div>
+
+<!-- ===== Header ===== -->
+<header>
+    <h1>🐬 Luna's Ocean Math Adventure</h1>
+    <div class="stats">
+        <div class="stat-pill score">⭐ <span id="score">0</span></div>
+        <div class="stat-pill lives">❤️ <span id="lives">3</span></div>
+        <button class="btn secondary" style="padding:4px 14px;font-size:14px;" onclick="goHome()">🏠 Home</button>
+    </div>
+</header>
+
+<!-- ===== Main ===== -->
+<main>
+
+    <!-- ===== Home Screen ===== -->
+    <div class="screen active" id="home">
+        <div class="title">🌊 Hi Luna! 🐬</div>
+        <div class="subtitle">Pick a game to help the dolphins learn math!</div>
+
+        <div class="mode-grid">
+            <div class="mode-card" onclick="startGame('five')">
+                <span class="emoji">🖐️</span>
+                <h3>Build a 5</h3>
+                <p>Find pairs that add up to <strong>5</strong></p>
+            </div>
+            <div class="mode-card" onclick="startGame('ten')">
+                <span class="emoji">🙌</span>
+                <h3>Build a 10</h3>
+                <p>Find pairs that add up to <strong>10</strong></p>
+            </div>
+            <div class="mode-card" onclick="startGame('triple')">
+                <span class="emoji">🐋</span>
+                <h3>Triple Dolphin</h3>
+                <p>Add 3 numbers using the 5's trick!</p>
+            </div>
+            <div class="mode-card" onclick="startGame('match')">
+                <span class="emoji">🎯</span>
+                <h3>Pair Match</h3>
+                <p>Tap two cards that make <strong>10</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Build-a-Number Screen ===== -->
+    <div class="screen" id="build">
+        <div class="game-box">
+            <h2 id="buildTitle">Build a 5!</h2>
+            <p class="hint" id="buildHint">What number makes it 5?</p>
+
+            <div class="question" id="buildQ">3 <span class="op">+</span> <span class="blank">?</span> <span class="op">=</span> 5</div>
+
+            <div class="options" id="buildOpts"></div>
+            <div class="feedback" id="buildFb"></div>
+            <div class="progress-bar"><div class="progress-fill" id="buildProg"></div></div>
+        </div>
+    </div>
+
+    <!-- ===== Triple Addition Screen ===== -->
+    <div class="screen" id="triple">
+        <div class="game-box">
+            <h2>🐋 Triple Dolphin Add</h2>
+            <p class="hint">Use the <strong>5's trick</strong>: find a 5 or make a 5!</p>
+
+            <div class="question" id="tripleQ">4 <span class="op">+</span> 5 <span class="op">+</span> 3 <span class="op">=</span> <span class="blank">?</span></div>
+
+            <div class="options" id="tripleOpts"></div>
+            <div class="feedback" id="tripleFb"></div>
+            <div class="progress-bar"><div class="progress-fill" id="tripleProg"></div></div>
+        </div>
+    </div>
+
+    <!-- ===== Pair Match Screen ===== -->
+    <div class="screen" id="match">
+        <div class="game-box">
+            <h2>🎯 Pair Match — Make 10!</h2>
+            <p class="hint" id="matchHint">Tap two cards that add up to 10. Clear them all!</p>
+            <div class="pair-grid" id="pairGrid"></div>
+            <div class="feedback" id="matchFb"></div>
+        </div>
+    </div>
+</main>
+
+<!-- ===== Celebration Modal ===== -->
+<div class="celebrate" id="celebrate">
+    <div class="celebrate-box">
+        <span class="big-emoji" id="celebEmoji">🎉</span>
+        <h2 id="celebTitle">Amazing, Luna!</h2>
+        <p id="celebMsg">You finished the round!</p>
+        <div class="stars-earned" id="starsEarned"></div>
+        <div class="btn-row">
+            <button class="btn" onclick="hideCelebrate(); restartGame();">🔁 Play Again</button>
+            <button class="btn secondary" onclick="hideCelebrate(); goHome();">🏠 Home</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/* =========================================================
+   LUNA'S OCEAN MATH ADVENTURE
+   Teaches 5's complement and 10's complement addition
+   ========================================================= */
+
+/* ---------- State ---------- */
+const state = {
+    score: 0,
+    lives: 3,
+    mode: null,
+    round: 0,
+    maxRounds: 8,
+    current: null,
+};
+
+const screens = {
+    home:   document.getElementById('home'),
+    build:  document.getElementById('build'),
+    triple: document.getElementById('triple'),
+    match:  document.getElementById('match'),
+};
+
+/* ---------- Utilities ---------- */
+const $ = (id) => document.getElementById(id);
+const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const shuffle = (a) => a.sort(() => Math.random() - 0.5);
+
+function setScore(delta) {
+    state.score = Math.max(0, state.score + delta);
+    $('score').textContent = state.score;
+}
+function setLives(delta) {
+    state.lives = Math.max(0, state.lives + delta);
+    $('lives').textContent = state.lives;
+}
+
+function showScreen(name) {
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+}
+
+/* ---------- Sound (Web Audio beep) ---------- */
+let audioCtx;
+function beep(freq, duration = 0.15, type = 'sine', vol = 0.2) {
+    try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.value = vol;
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.stop(audioCtx.currentTime + duration);
+    } catch (e) {}
+}
+const sndGood = () => { beep(660, 0.1); setTimeout(() => beep(990, 0.15), 80); };
+const sndBad  = () => { beep(220, 0.2, 'sawtooth', 0.15); };
+const sndWin  = () => {
+    [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.18), i * 100));
+};
+
+/* ---------- Home / Navigation ---------- */
+function goHome() {
+    state.mode = null;
+    state.round = 0;
+    showScreen('home');
+}
+function startGame(mode) {
+    state.mode = mode;
+    state.round = 0;
+    state.lives = 3;
+    state.score = 0;
+    setScore(0);
+    setLives(0);
+
+    if (mode === 'five')   runBuild(5);
+    if (mode === 'ten')    runBuild(10);
+    if (mode === 'triple') runTriple();
+    if (mode === 'match')  runMatch();
+}
+function restartGame() {
+    if (state.mode) startGame(state.mode);
+}
+
+/* =========================================================
+   MODE 1 & 2: Build a 5 / Build a 10
+   ========================================================= */
+function runBuild(target) {
+    state.target = target;
+    showScreen('build');
+    $('buildTitle').textContent = `🖐️ Build a ${target}!`;
+    $('buildHint').textContent = `What number makes it ${target}?`;
+    nextBuild();
+}
+
+function nextBuild() {
+    if (state.round >= state.maxRounds || state.lives <= 0) {
+        endRound();
+        return;
+    }
+    state.round++;
+    updateProgress('buildProg');
+
+    const target = state.target;
+    const a = rand(0, target - 1);
+    const answer = target - a;
+    state.current = { a, answer };
+
+    $('buildQ').innerHTML =
+        `${a} <span class="op">+</span> <span class="blank">?</span> <span class="op">=</span> ${target}`;
+    $('buildFb').textContent = '';
+    $('buildFb').className = 'feedback';
+
+    const opts = new Set([answer]);
+    while (opts.size < 4) opts.add(rand(0, target));
+    const arr = shuffle([...opts]);
+
+    const optsEl = $('buildOpts');
+    optsEl.innerHTML = '';
+    arr.forEach(v => {
+        const b = document.createElement('button');
+        b.className = 'opt';
+        b.textContent = v;
+        b.onclick = () => answerBuild(b, v);
+        optsEl.appendChild(b);
+    });
+}
+
+function answerBuild(btn, val) {
+    const correct = val === state.current.answer;
+    document.querySelectorAll('#buildOpts .opt').forEach(b => b.disabled = true);
+
+    if (correct) {
+        btn.classList.add('correct');
+        setScore(10);
+        sndGood();
+        $('buildFb').textContent = pickPraise();
+        $('buildFb').className = 'feedback good';
+        setTimeout(nextBuild, 900);
+    } else {
+        btn.classList.add('wrong');
+        setLives(-1);
+        sndBad();
+        const { a, answer } = state.current;
+        $('buildFb').innerHTML = `Oops! ${a} + <strong>${answer}</strong> = ${state.target}. Try again! 💪`;
+        $('buildFb').className = 'feedback bad';
+        document.querySelectorAll('#buildOpts .opt').forEach(b => {
+            if (parseInt(b.textContent) === answer) b.classList.add('correct');
+        });
+        setTimeout(nextBuild, 1800);
+    }
+}
+
+/* =========================================================
+   MODE 3: Triple Dolphin — Add three single-digit numbers
+   using the 5's complement strategy
+   ========================================================= */
+function runTriple() {
+    showScreen('triple');
+    nextTriple();
+}
+
+function generateTriple() {
+    // Build three numbers where at least one 5 appears OR one can be decomposed to 5+x
+    const patterns = [
+        () => [5, rand(1, 4), rand(1, 4)],
+        () => [rand(1, 4), 5, rand(1, 4)],
+        () => [rand(6, 9), 10 - rand(6, 9), rand(1, 4)],  // 10's pair + extra
+        () => [rand(1, 4), rand(1, 4), 5],
+        () => [rand(6, 9), rand(1, 3), rand(1, 3)],       // 5+x decomposition
+    ];
+    const nums = patterns[rand(0, patterns.length - 1)]();
+    return nums;
+}
+
+function nextTriple() {
+    if (state.round >= state.maxRounds || state.lives <= 0) {
+        endRound();
+        return;
+    }
+    state.round++;
+    updateProgress('tripleProg');
+
+    const nums = generateTriple();
+    const sum = nums.reduce((x, y) => x + y, 0);
+    state.current = { nums, sum };
+
+    $('tripleQ').innerHTML =
+        `${nums[0]} <span class="op">+</span> ${nums[1]} <span class="op">+</span> ${nums[2]} <span class="op">=</span> <span class="blank">?</span>`;
+    $('tripleFb').textContent = '';
+    $('tripleFb').className = 'feedback';
+
+    const opts = new Set([sum]);
+    while (opts.size < 4) {
+        const v = sum + rand(-4, 4);
+        if (v > 0 && v !== sum) opts.add(v);
+    }
+    const arr = shuffle([...opts]);
+
+    const optsEl = $('tripleOpts');
+    optsEl.innerHTML = '';
+    arr.forEach(v => {
+        const b = document.createElement('button');
+        b.className = 'opt';
+        b.textContent = v;
+        b.onclick = () => answerTriple(b, v);
+        optsEl.appendChild(b);
+    });
+}
+
+function answerTriple(btn, val) {
+    const correct = val === state.current.sum;
+    document.querySelectorAll('#tripleOpts .opt').forEach(b => b.disabled = true);
+
+    if (correct) {
+        btn.classList.add('correct');
+        setScore(15);
+        sndGood();
+        $('tripleFb').innerHTML = pickPraise() + ' ' + explainFive(state.current.nums);
+        $('tripleFb').className = 'feedback good';
+        setTimeout(nextTriple, 1800);
+    } else {
+        btn.classList.add('wrong');
+        setLives(-1);
+        sndBad();
+        $('tripleFb').innerHTML = `Not quite! The answer is <strong>${state.current.sum}</strong>. ${explainFive(state.current.nums)}`;
+        $('tripleFb').className = 'feedback bad';
+        document.querySelectorAll('#tripleOpts .opt').forEach(b => {
+            if (parseInt(b.textContent) === state.current.sum) b.classList.add('correct');
+        });
+        setTimeout(nextTriple, 2600);
+    }
+}
+
+/* Explain using 5's complement */
+function explainFive(nums) {
+    const [a, b, c] = nums;
+    // If a 5 is present, show "5 + (rest)"
+    if (nums.includes(5)) {
+        const rest = nums.filter(n => n !== 5);
+        const restSum = rest[0] + rest[1];
+        return `💡 Keep the 5, then ${rest[0]} + ${rest[1]} = ${restSum}. 5 + ${restSum} = ${5 + restSum}.`;
+    }
+    // Find a number > 5 to decompose
+    const big = nums.find(n => n > 5);
+    if (big) {
+        const rest = [...nums];
+        rest.splice(rest.indexOf(big), 1);
+        const x = big - 5;
+        const total = 5 + x + rest[0] + rest[1];
+        return `💡 ${big} = 5 + ${x}, so ${big}+${rest[0]}+${rest[1]} = 5 + ${x} + ${rest[0]} + ${rest[1]} = ${total}.`;
+    }
+    return `💡 Just add them up: ${a} + ${b} + ${c} = ${a+b+c}.`;
+}
+
+/* =========================================================
+   MODE 4: Pair Match — 10's complement memory
+   ========================================================= */
+function runMatch() {
+    showScreen('match');
+    startMatchRound();
+}
+
+let matchState = null;
+function startMatchRound() {
+    // Build 4 pairs that each sum to 10
+    const pairs = [[1,9], [2,8], [3,7], [4,6]];
+    shuffle(pairs);
+    const chosen = pairs.slice(0, 4);
+    const cards = [];
+    chosen.forEach((p, i) => {
+        cards.push({ val: p[0], pid: i });
+        cards.push({ val: p[1], pid: i });
+    });
+    shuffle(cards);
+
+    matchState = { cards, selected: [], matched: 0, needed: chosen.length };
+
+    const grid = $('pairGrid');
+    grid.innerHTML = '';
+    cards.forEach((c, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'card';
+        btn.textContent = c.val;
+        btn.dataset.idx = idx;
+        btn.onclick = () => pickCard(btn, idx);
+        grid.appendChild(btn);
+    });
+    $('matchFb').textContent = '';
+    $('matchFb').className = 'feedback';
+    $('matchHint').textContent = 'Tap two cards that add up to 10. Clear them all!';
+}
+
+function pickCard(btn, idx) {
+    const card = matchState.cards[idx];
+    if (btn.classList.contains('matched') || btn.classList.contains('selected')) return;
+    if (matchState.selected.length >= 2) return;
+
+    btn.classList.add('selected');
+    matchState.selected.push({ btn, idx, card });
+
+    if (matchState.selected.length === 2) {
+        const [a, b] = matchState.selected;
+        const sum = a.card.val + b.card.val;
+
+        setTimeout(() => {
+            if (sum === 10) {
+                a.btn.classList.remove('selected');
+                b.btn.classList.remove('selected');
+                a.btn.classList.add('matched');
+                b.btn.classList.add('matched');
+                matchState.matched++;
+                setScore(20);
+                sndGood();
+                $('matchFb').innerHTML = `🎉 ${a.card.val} + ${b.card.val} = 10! Great match!`;
+                $('matchFb').className = 'feedback good';
+                if (matchState.matched >= matchState.needed) {
+                    setTimeout(() => endRound(), 800);
+                }
+            } else {
+                a.btn.classList.add('miss');
+                b.btn.classList.add('miss');
+                setLives(-1);
+                sndBad();
+                $('matchFb').innerHTML = `${a.card.val} + ${b.card.val} = ${sum}, not 10. Try again!`;
+                $('matchFb').className = 'feedback bad';
+                setTimeout(() => {
+                    a.btn.classList.remove('selected', 'miss');
+                    b.btn.classList.remove('selected', 'miss');
+                    if (state.lives <= 0) endRound();
+                }, 700);
+            }
+            matchState.selected = [];
+        }, 500);
+    }
+}
+
+/* =========================================================
+   End of round — celebrate
+   ========================================================= */
+function updateProgress(id) {
+    const pct = (state.round / state.maxRounds) * 100;
+    $(id).style.width = pct + '%';
+}
+
+function endRound() {
+    // Stars based on score & lives
+    let stars = 0;
+    if (state.lives > 0) stars = 1;
+    if (state.score >= 60) stars = 2;
+    if (state.score >= 100) stars = 3;
+
+    let title = '', msg = '', emoji = '🎉';
+    if (state.lives <= 0) {
+        title = 'Good try, Luna!';
+        msg = 'The dolphins loved your effort! Practice makes perfect.';
+        emoji = '🐬';
+    } else if (stars === 3) {
+        title = 'WOW! Perfect Swim! 🌟';
+        msg = 'You are a math dolphin superstar!';
+        emoji = '🏆';
+    } else if (stars === 2) {
+        title = 'Great job, Luna!';
+        msg = 'The ocean is cheering for you!';
+        emoji = '🐋';
+    } else {
+        title = 'Nice work!';
+        msg = 'Keep swimming — you got this!';
+        emoji = '🐟';
+    }
+
+    $('celebTitle').textContent = title;
+    $('celebMsg').textContent = msg;
+    $('celebEmoji').textContent = emoji;
+
+    let starHTML = '';
+    for (let i = 0; i < 3; i++) starHTML += `<span class="${i < stars ? 'filled' : 'empty'}">★</span>`;
+    $('starsEarned').innerHTML = starHTML;
+
+    sndWin();
+    makeConfetti();
+    $('celebrate').classList.add('show');
+}
+
+function hideCelebrate() {
+    $('celebrate').classList.remove('show');
+}
+
+function makeConfetti() {
+    const colors = ['#ffd166', '#ff6b9d', '#06d6a0', '#00b4d8', '#ef476f'];
+    for (let i = 0; i < 50; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.background = colors[rand(0, colors.length - 1)];
+        c.style.animationDelay = Math.random() * 1.5 + 's';
+        c.style.transform = `rotate(${rand(0, 360)}deg)`;
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 4000);
+    }
+}
+
+/* ---------- Praise messages ---------- */
+const praises = [
+    '🌟 Awesome, Luna!',
+    '🐬 Splash! You got it!',
+    '🎉 Super star!',
+    '💫 Brilliant!',
+    '🏆 Champion math!',
+    '🌊 Ocean-wave-tastic!',
+    '⭐ Yes! Well done!',
+    '🐙 Tentacle-ly smart!',
+];
+function pickPraise() { return praises[rand(0, praises.length - 1)]; }
+
+/* ---------- Bubble background ---------- */
+function makeBubbles() {
+    const container = $('bubbles');
+    for (let i = 0; i < 20; i++) {
+        const b = document.createElement('div');
+        b.className = 'bubble';
+        const size = rand(10, 40);
+        b.style.width = size + 'px';
+        b.style.height = size + 'px';
+        b.style.left = Math.random() * 100 + 'vw';
+        b.style.animationDuration = rand(8, 16) + 's';
+        b.style.animationDelay = Math.random() * 8 + 's';
+        b.style.setProperty('--drift', rand(-60, 60) + 'px');
+        container.appendChild(b);
+    }
+}
+makeBubbles();
+
+/* Unlock audio on first tap */
+document.addEventListener('click', () => {
+    if (!audioCtx) {
+        try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+    }
+}, { once: true });
+
+</script>
+</body>
+</html>
