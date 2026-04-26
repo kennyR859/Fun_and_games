@@ -65,8 +65,8 @@
   @media(max-width:480px){.choices{grid-template-columns:1fr}}
   .choice{
     background:#fff;border:3px solid #00b4d8;color:#0077b6;font-family:inherit;
-    padding:14px;border-radius:14px;font-size:1.2em;font-weight:bold;cursor:pointer;
-    transition:transform .15s, background .15s;
+    padding:14px;border-radius:14px;font-size:1.05em;font-weight:bold;cursor:pointer;
+    transition:transform .15s, background .15s;line-height:1.3;
   }
   .choice:hover:not(:disabled){background:#caf0f8;transform:scale(1.04)}
   .choice.correct{background:#90e8a8;border-color:#2ea672;color:#0a4a26;animation:pop .4s}
@@ -172,8 +172,8 @@
   <div class="menu-card" onclick="startMode('read')">
     <span class="icon">🌊</span>
     <h2>Read the Clock</h2>
-    <p>Look at the clock and pick the right time. 10 questions!</p>
-    <span class="tag">Hours • Halves • Quarters • 5-min</span>
+    <p>Read the clock using <b>"quarter past 9"</b>, <b>"10 to 5"</b>, <b>"half past 6"</b>. 10 questions!</p>
+    <span class="tag">Time in words • past / to</span>
   </div>
   <div class="menu-card" onclick="startMode('match')">
     <span class="icon">🐚</span>
@@ -314,6 +314,15 @@ function fmtTime(h, m){ return `${h}:${String(m).padStart(2,'0')}`; }
 function lcdTime(h, m, size='med'){
   return `<div class="lcd ${size}">${h}<span class="sep">:</span>${String(m).padStart(2,'0')}</div>`;
 }
+function nextHour(h){ return (h % 12) + 1; }
+function timeInWords(h, m){
+  if(m === 0)  return `${h} o'clock`;
+  if(m === 15) return `quarter past ${h}`;
+  if(m === 30) return `half past ${h}`;
+  if(m === 45) return `quarter to ${nextHour(h)}`;
+  if(m < 30)   return `${m} past ${h}`;
+  return `${60 - m} to ${nextHour(h)}`;
+}
 
 /* ==================== STATE ==================== */
 const state = {
@@ -341,45 +350,56 @@ function genReadQuestion(qIdx){
   } else if(qIdx < 6){
     // half / quarter
     h = 1 + Math.floor(Math.random()*12);
-    m = [0, 15, 30, 45][Math.floor(Math.random()*4)];
+    m = [15, 30, 45][Math.floor(Math.random()*3)];
   } else {
-    // 5-min increments
+    // past / to (5,10,20,25 past · 25,20,10,5 to)
     h = 1 + Math.floor(Math.random()*12);
-    m = Math.floor(Math.random()*12) * 5;
+    m = [5, 10, 20, 25, 35, 40, 50, 55][Math.floor(Math.random()*8)];
   }
-  const correct = fmtTime(h, m);
+  const correct = timeInWords(h, m);
   const choices = new Set([correct]);
+  // Distractor 1: same minute, ±1 hour (wrong hour)
+  const altH = h===12 ? 11 : (h===1 ? 2 : (Math.random()<0.5 ? h-1 : h+1));
+  choices.add(timeInWords(altH, m));
+  // Distractor 2: flip past/to (mirror minute around 30) — common confusion
+  if(m !== 0 && m !== 30){
+    const flippedM = (60 - m) % 60;
+    choices.add(timeInWords(h, flippedM));
+  }
+  // Distractor 3: nearby minute on same hour
   while(choices.size < 4){
-    let dh = h + (Math.random()<0.5 ? 0 : (Math.random()<0.5?-1:1));
-    if(dh<1) dh=1; if(dh>12) dh=12;
-    let dm = (m + ([5,10,15,30,-15,-5][Math.floor(Math.random()*6)] + 60))%60;
-    if(qIdx<3) dm = [0,30,15,45][Math.floor(Math.random()*4)];
-    if(qIdx<6) dm = [0,15,30,45][Math.floor(Math.random()*4)];
-    choices.add(fmtTime(dh, dm));
+    const opts = qIdx<3 ? [15,30,45,0]
+                : qIdx<6 ? [0,15,30,45]
+                : [5,10,15,20,25,30,35,40,45,50,55,0];
+    const dm = opts[Math.floor(Math.random()*opts.length)];
+    if(dm !== m) choices.add(timeInWords(h, dm));
   }
   const arr = Array.from(choices).sort(()=>Math.random()-0.5);
   return {h, m, correct, choices: arr};
 }
 function renderRead(){
   const q = state.current;
+  // Encode the choice text safely for the data attribute / handler
   $('qarea').innerHTML = `
     <div class="clock-display">${clockSVG(q.h, q.m, 220)}</div>
     <div class="question-text">What time is it? 🕐</div>
     <div class="choices">
-      ${q.choices.map(c => `<button class="choice" data-c="${c}" onclick="answerRead('${c}')">${c}</button>`).join('')}
+      ${q.choices.map((c,i) => `<button class="choice" data-c="${i}" onclick="answerRead(${i})">${c}</button>`).join('')}
     </div>
   `;
 }
-function answerRead(c){
+function answerRead(idx){
   if(state.answered) return;
   state.answered = true;
   const q = state.current;
+  const picked = q.choices[idx];
   document.querySelectorAll('.choice').forEach(b=>{
-    if(b.dataset.c===q.correct) b.classList.add('correct');
-    else if(b.dataset.c===c) b.classList.add('wrong');
+    const i = parseInt(b.dataset.c, 10);
+    if(q.choices[i]===q.correct) b.classList.add('correct');
+    else if(i===idx) b.classList.add('wrong');
     b.disabled = true;
   });
-  if(c===q.correct){
+  if(picked===q.correct){
     state.score += 10;
     $('feedback').textContent = pickPraise();
     $('feedback').className = 'feedback good';
@@ -387,7 +407,7 @@ function answerRead(c){
     confetti(20);
   } else {
     state.lives -= 1;
-    $('feedback').textContent = `Oops! It was ${q.correct}. ${pickEncourage()}`;
+    $('feedback').textContent = `Oops! It was "${q.correct}". ${pickEncourage()}`;
     $('feedback').className = 'feedback bad';
     wrongSound();
   }
