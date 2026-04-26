@@ -134,6 +134,29 @@
     border-radius:12px;font-size:.95em;margin-bottom:8px;letter-spacing:1px;
   }
 
+  /* Story mode (two-clock elapsed time) */
+  .story-context{
+    font-size:1.2em;line-height:1.5;color:#013a63;margin:10px auto 16px;max-width:560px;
+    text-align:center;
+  }
+  .story-clocks{
+    display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap;
+    margin:10px 0 18px;
+  }
+  .story-clock-card{
+    text-align:center;background:#fffaf0;padding:10px 14px;border-radius:18px;
+    border:3px solid #0077b6;box-shadow:0 4px 10px rgba(0,0,0,.1);
+  }
+  .story-clock-card .ribbon{
+    background:#ff6b9d;color:#fff;padding:3px 14px;border-radius:12px;
+    font-size:.85em;letter-spacing:1px;display:inline-block;margin-bottom:6px;font-weight:bold;
+  }
+  .story-clock-card .ribbon.end{background:#06ba63}
+  .story-arrow{font-size:2.4em;color:#ff6b9d;font-weight:bold;line-height:1}
+  @media(max-width:520px){
+    .story-arrow{transform:rotate(90deg);font-size:2em;margin:4px 0}
+  }
+
   /* Result screen */
   .result{text-align:center;padding:24px}
   .stars{font-size:3em;letter-spacing:8px;margin:12px 0}
@@ -190,8 +213,8 @@
   <div class="menu-card" onclick="startMode('story')">
     <span class="icon">🐬</span>
     <h2>Dolphin Time Stories</h2>
-    <p>Word problems about elapsed time. How long did Luna swim?</p>
-    <span class="tag">Word Problems</span>
+    <p>Two clocks: <b>START</b> and <b>END</b>. How long did Luna do it?</p>
+    <span class="tag">Elapsed Time • Two Clocks</span>
   </div>
 </div>
 
@@ -578,52 +601,101 @@ function checkSet(){
   if(state.lives<=0) setTimeout(endGame, 900);
 }
 
-/* ==================== MODE: STORY ==================== */
-const stories = [
-  { text: "🐬 Luna started swimming at <b>2:00</b> and stopped at <b>2:30</b>. How many minutes did she swim?", correct: "30 minutes",
-    choices:["30 minutes","60 minutes","15 minutes","45 minutes"], hint:"From :00 to :30 is half an hour." },
-  { text: "🐚 Luna's reading time started at <b>7:00</b> and ended at <b>8:00</b>. How long did she read?", correct: "1 hour",
-    choices:["30 minutes","1 hour","2 hours","45 minutes"], hint:"From 7 to 8 is one full hour." },
-  { text: "🌊 The dolphin show began at <b>1:00</b> and lasted <b>2 hours</b>. What time did it end?", correct: "3:00",
-    choices:["2:00","3:00","4:00","2:30"], hint:"1:00 + 2 hours = 3:00" },
-  { text: "🐠 Luna got home at <b>3:15</b> and started homework at <b>3:30</b>. How many minutes did she rest?", correct: "15 minutes",
-    choices:["10 minutes","15 minutes","30 minutes","45 minutes"], hint:"3:30 − 3:15 = 15 minutes (a quarter)." },
-  { text: "🦈 The pool opens at <b>9:00 AM</b> and closes at <b>12:00 PM</b>. How many hours is it open?", correct: "3 hours",
-    choices:["2 hours","3 hours","4 hours","12 hours"], hint:"9 → 10 → 11 → 12 = 3 hours" },
-  { text: "🐳 Luna's nap started at <b>1:30</b> and ended at <b>2:15</b>. How long did she nap?", correct: "45 minutes",
-    choices:["30 minutes","45 minutes","1 hour","15 minutes"], hint:"1:30 → 2:00 (30 min) → 2:15 (15 more) = 45 min" },
-  { text: "🌅 Sunrise was at <b>6:00 AM</b>. Luna woke up <b>30 minutes later</b>. What time?", correct: "6:30",
-    choices:["6:30","7:00","5:30","6:15"], hint:"6:00 + 30 minutes = 6:30" },
-  { text: "🍦 Ice-cream truck arrives at <b>4:45</b> and leaves at <b>5:00</b>. How many minutes does it stay?", correct: "15 minutes",
-    choices:["15 minutes","30 minutes","45 minutes","1 hour"], hint:"4:45 → 5:00 is a quarter of an hour." },
-  { text: "🎂 Luna's birthday party starts at <b>2:30</b> and runs for <b>1 hour and 30 minutes</b>. End time?", correct: "4:00",
-    choices:["3:30","4:00","4:30","3:00"], hint:"2:30 + 1:30 = 4:00" },
-  { text: "🐢 The turtle walks for <b>2 hours</b> starting at <b>10:00</b>. What time is the turtle done?", correct: "12:00",
-    choices:["11:00","12:00","1:00","2:00"], hint:"10 + 2 = 12 o'clock" },
+/* ==================== MODE: STORY (two-clock elapsed time) ==================== */
+const storyActivities = [
+  {emoji:'🐬', verb:'swam'},
+  {emoji:'🐚', verb:'read a book'},
+  {emoji:'🌊', verb:'played at the beach'},
+  {emoji:'🐠', verb:'watched fish'},
+  {emoji:'🦈', verb:'ate dinner'},
+  {emoji:'🌅', verb:'napped'},
+  {emoji:'🍦', verb:'had ice cream'},
+  {emoji:'🎂', verb:'had a birthday party'},
+  {emoji:'🐢', verb:'walked the turtle'},
+  {emoji:'🚌', verb:'rode the bus'},
+  {emoji:'📚', verb:'studied math'},
+  {emoji:'🎨', verb:'painted a picture'},
 ];
+function formatElapsed(min){
+  if(min === 0) return '0 minutes';
+  if(min < 60) return `${min} minutes`;
+  if(min === 60) return `1 hour`;
+  if(min % 60 === 0) return `${min/60} hours`;
+  const h = Math.floor(min/60), m = min%60;
+  return `${h} hour${h>1?'s':''} ${m} minutes`;
+}
 function genStoryQuestion(qIdx){
-  return stories[qIdx % stories.length];
+  let startH, startM, elapsed;
+  if(qIdx < 3){
+    // within an hour
+    startH = 1 + Math.floor(Math.random()*11);
+    startM = [0, 15, 30][Math.floor(Math.random()*3)];
+    elapsed = [15, 30, 45][Math.floor(Math.random()*3)];
+  } else if(qIdx < 6){
+    // crosses hour boundary, simple
+    startH = 1 + Math.floor(Math.random()*11);
+    startM = [0, 15, 30, 45][Math.floor(Math.random()*4)];
+    elapsed = [45, 60, 75, 90][Math.floor(Math.random()*4)];
+  } else {
+    // 1-2 hours, varied
+    startH = 1 + Math.floor(Math.random()*10);
+    startM = [0, 15, 30][Math.floor(Math.random()*3)];
+    elapsed = [60, 75, 90, 105, 120][Math.floor(Math.random()*5)];
+  }
+  const totalStart = startH*60 + startM;
+  const totalEnd = totalStart + elapsed;
+  const endH = (Math.floor(totalEnd/60) - 1) % 12 + 1;
+  const endM = totalEnd % 60;
+  const correct = formatElapsed(elapsed);
+  // Distractors
+  const choices = new Set([correct]);
+  const deltas = [-30, -15, +15, +30, +45, -45, +60, -60];
+  while(choices.size < 4){
+    const delta = deltas[Math.floor(Math.random()*deltas.length)];
+    const v = elapsed + delta;
+    if(v > 0 && v <= 240){
+      choices.add(formatElapsed(v));
+    }
+  }
+  const arr = Array.from(choices).sort(()=>Math.random()-0.5);
+  const act = storyActivities[Math.floor(Math.random()*storyActivities.length)];
+  return { startH, startM, endH, endM, elapsed, correct, choices: arr, activity: act };
 }
 function renderStory(){
   const q = state.current;
   $('qarea').innerHTML = `
-    <div style="font-size:1.4em;line-height:1.6;margin:14px auto;max-width:560px">${q.text}</div>
-    <div class="choices">
-      ${q.choices.map(c => `<button class="choice" data-c="${c}" onclick="answerStory('${c.replace(/'/g,"\\'")}')">${c}</button>`).join('')}
+    <div class="story-context">
+      ${q.activity.emoji} Luna ${q.activity.verb}.<br>
+      <b>How long did it take?</b>
     </div>
-    <div style="font-size:.9em;color:#666;margin-top:8px">💡 ${q.hint}</div>
+    <div class="story-clocks">
+      <div class="story-clock-card">
+        <div class="ribbon">START</div>
+        ${clockSVG(q.startH, q.startM, 160)}
+      </div>
+      <div class="story-arrow">➡️</div>
+      <div class="story-clock-card">
+        <div class="ribbon end">END</div>
+        ${clockSVG(q.endH, q.endM, 160)}
+      </div>
+    </div>
+    <div class="choices">
+      ${q.choices.map((c,i) => `<button class="choice" data-c="${i}" onclick="answerStory(${i})">${c}</button>`).join('')}
+    </div>
   `;
 }
-function answerStory(c){
+function answerStory(idx){
   if(state.answered) return;
   state.answered = true;
   const q = state.current;
+  const picked = q.choices[idx];
   document.querySelectorAll('.choice').forEach(b=>{
-    if(b.dataset.c===q.correct) b.classList.add('correct');
-    else if(b.dataset.c===c) b.classList.add('wrong');
+    const i = parseInt(b.dataset.c, 10);
+    if(q.choices[i]===q.correct) b.classList.add('correct');
+    else if(i===idx) b.classList.add('wrong');
     b.disabled = true;
   });
-  if(c===q.correct){
+  if(picked===q.correct){
     state.score += 10;
     $('feedback').textContent = pickPraise();
     $('feedback').className = 'feedback good';
