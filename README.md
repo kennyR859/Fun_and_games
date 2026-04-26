@@ -25,14 +25,30 @@ An elementary math game teaching **5's complement** and **10's complement** addi
 
 **Built with:** Pure HTML + CSS + JavaScript (no frameworks, no dependencies).
 
+### 🕐 [Luna's Clock Quest](./luna-clock-quest/)
+
+A telling-time game with 4 dolphin-themed modes covering analog clock reading from o'clock through 5-minute precision.
+
+**Play now:** https://kennyr859.github.io/Fun_and_games/luna-clock-quest/
+
+**Features:**
+- 🌊 **Read the Clock** — multiple-choice time recognition (o'clock → quarter → 5-min)
+- 🐚 **Tide Match** — memory game pairing analog clocks with digital times (8 pairs)
+- 🐠 **Set the Clock** — adjust hour and minute hands with +/− controls to match a target time
+- 🐬 **Dolphin Time Stories** — elapsed-time word problems with hints
+- ⭐ Score, ❤️ lives, ⭐⭐⭐ star rating, encouragement comments after every answer
+- 🎊 Confetti + Web Audio feedback for correct answers
+- 🎯 Common Core 3.MD.A.1 aligned
+
 ---
 
 ## 📚 Learning Goals
 
-The first game targets these Common Core standards:
+These games target these Common Core standards:
 
-- **CCSS.MATH.CONTENT.1.NBT.B.2** — Understanding base-10 and digit place value
-- **CCSS.MATH.CONTENT.1.OA.C.6** — Mental-math strategies (make-a-five, make-a-ten) to add within 20
+- **CCSS.MATH.CONTENT.1.NBT.B.2** — Understanding base-10 and digit place value (Ocean Math)
+- **CCSS.MATH.CONTENT.1.OA.C.6** — Mental-math strategies (make-a-five, make-a-ten) to add within 20 (Ocean Math)
+- **CCSS.MATH.CONTENT.3.MD.A.1** — Tell and write time to the nearest minute; solve word problems involving addition and subtraction of time intervals (Clock Quest)
 
 ---
 

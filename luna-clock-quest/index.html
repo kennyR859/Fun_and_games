@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luna's Clock Quest 🕐🐬</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    min-height:100vh;
+    font-family:'Comic Sans MS','Chalkboard SE','Trebuchet MS', sans-serif;
+    background: linear-gradient(135deg, #0077b6, #00b4d8 40%, #90e0ef 70%, #ffd166);
+    background-size:400% 400%;
+    animation: oceanShift 20s ease infinite;
+    color:#013a63;
+    overflow-x:hidden;
+  }
+  @keyframes oceanShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+
+  /* Floating bubbles */
+  .bubbles{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+  .bubble{position:absolute;bottom:-60px;background:rgba(255,255,255,.45);border-radius:50%;animation:rise linear infinite}
+  @keyframes rise{to{transform:translateY(-110vh) translateX(20px);opacity:0}}
+
+  .container{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:24px 16px 60px}
+
+  header{text-align:center;color:#fff;text-shadow:0 3px 12px rgba(0,0,0,.25);padding:18px 0 8px}
+  header h1{font-size:clamp(30px,5.5vw,52px);letter-spacing:1px}
+  header p{font-size:clamp(14px,2vw,18px);margin-top:6px;opacity:.95}
+  .home-btn{
+    position:absolute;top:18px;right:18px;background:rgba(255,255,255,.9);
+    color:#0077b6;border:none;padding:8px 14px;border-radius:14px;cursor:pointer;
+    font-family:inherit;font-weight:bold;text-decoration:none;font-size:14px;
+    box-shadow:0 4px 10px rgba(0,0,0,.15);
+  }
+  .home-btn:hover{background:#fff;transform:translateY(-2px)}
+
+  /* Menu */
+  .menu{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin-top:24px}
+  .menu-card{
+    background:rgba(255,255,255,.95);padding:24px;border-radius:22px;cursor:pointer;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);border:4px solid transparent;
+    transition:transform .25s, box-shadow .25s, border-color .25s;text-align:center;
+  }
+  .menu-card:hover{transform:translateY(-6px) scale(1.02);border-color:#ffd166;box-shadow:0 14px 30px rgba(0,0,0,.3)}
+  .menu-card .icon{font-size:60px;display:block;margin-bottom:8px}
+  .menu-card h2{color:#0077b6;font-size:22px;margin-bottom:6px}
+  .menu-card p{color:#555;font-size:14px;line-height:1.5}
+  .menu-card .tag{display:inline-block;background:#ffd166;color:#0077b6;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:bold;margin-top:10px}
+
+  /* Game card */
+  .game-card{
+    background:rgba(255,255,255,.97);padding:24px;border-radius:22px;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);margin-top:18px;
+  }
+  .stats{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .stat{background:#caf0f8;color:#0077b6;padding:8px 14px;border-radius:14px;font-weight:bold;font-size:15px}
+  .stat .v{color:#ff6b9d;font-size:18px}
+
+  .question-area{text-align:center;padding:14px 0}
+  .clock-display{display:inline-block;background:#fffaf0;border-radius:50%;padding:10px;box-shadow:0 6px 14px rgba(0,0,0,.1)}
+  .question-text{font-size:1.3em;color:#013a63;margin:14px 0;line-height:1.5}
+
+  .choices{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:500px;margin:14px auto 0}
+  @media(max-width:480px){.choices{grid-template-columns:1fr}}
+  .choice{
+    background:#fff;border:3px solid #00b4d8;color:#0077b6;font-family:inherit;
+    padding:14px;border-radius:14px;font-size:1.2em;font-weight:bold;cursor:pointer;
+    transition:transform .15s, background .15s;
+  }
+  .choice:hover:not(:disabled){background:#caf0f8;transform:scale(1.04)}
+  .choice.correct{background:#90e8a8;border-color:#2ea672;color:#0a4a26;animation:pop .4s}
+  .choice.wrong{background:#ffb3b3;border-color:#e76f51;color:#7a1f10;animation:shake .35s}
+  @keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+  .feedback{margin:12px 0;font-size:1.2em;font-weight:bold;min-height:30px}
+  .feedback.good{color:#2ea672}
+  .feedback.bad{color:#e76f51}
+
+  .next-btn, .start-btn, .play-again-btn{
+    background:#ff6b9d;color:#fff;border:none;padding:12px 28px;border-radius:18px;
+    font-family:inherit;font-size:1.1em;font-weight:bold;cursor:pointer;margin-top:10px;
+    box-shadow:0 4px 10px rgba(255,107,157,.4);transition:transform .15s, background .15s;
+  }
+  .next-btn:hover,.start-btn:hover,.play-again-btn:hover{background:#ff4d8f;transform:translateY(-2px)}
+
+  /* Match game */
+  .match-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:600px;margin:14px auto}
+  @media(max-width:600px){.match-grid{grid-template-columns:repeat(3,1fr)}}
+  .match-card{
+    aspect-ratio:1;background:#0077b6;border-radius:14px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:2em;
+    font-weight:bold;transition:transform .25s, background .25s;perspective:600px;
+    position:relative;
+  }
+  .match-card:hover:not(.flipped):not(.matched){transform:scale(1.04)}
+  .match-card.flipped{background:#fff;color:#0077b6}
+  .match-card.matched{background:#90e8a8;color:#0a4a26;cursor:default;animation:pop .4s}
+
+  /* Set Clock mode */
+  .set-clock-area{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .set-target{font-size:2em;font-family:'Courier New',monospace;background:#013a63;color:#ffd166;padding:8px 22px;border-radius:14px}
+  .set-controls{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+  .set-control{background:#caf0f8;padding:10px 14px;border-radius:14px;text-align:center}
+  .set-control label{display:block;color:#0077b6;font-weight:bold;margin-bottom:6px}
+  .set-buttons{display:flex;gap:6px;align-items:center}
+  .set-buttons button{
+    background:#0077b6;color:#fff;border:none;width:36px;height:36px;border-radius:50%;
+    font-size:1.2em;cursor:pointer;font-family:inherit;font-weight:bold;
+  }
+  .set-buttons button:hover{background:#005a8a}
+  .set-buttons .val{min-width:50px;font-size:1.4em;font-weight:bold;color:#013a63}
+
+  /* Result screen */
+  .result{text-align:center;padding:24px}
+  .stars{font-size:3em;letter-spacing:8px;margin:12px 0}
+  .result h2{color:#0077b6;font-size:2em;margin:10px 0}
+  .result-comment{
+    background:#fff8d6;color:#013a63;padding:14px 18px;border-radius:16px;
+    font-size:1.2em;margin:14px auto;max-width:500px;border-left:6px solid #ff6b9d;
+  }
+  .score-breakdown{font-size:1.1em;color:#0077b6;margin:8px 0}
+
+  /* Confetti */
+  .confetti{position:fixed;top:-20px;width:10px;height:14px;z-index:99;pointer-events:none;animation:fall 2.5s linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}
+
+  .hidden{display:none!important}
+
+  footer{text-align:center;color:#fff;font-size:13px;margin-top:30px;text-shadow:0 2px 6px rgba(0,0,0,.3)}
+  footer a{color:#fff;font-weight:bold}
+</style>
+</head>
+<body>
+
+<div class="bubbles" id="bubbles"></div>
+
+<div class="container">
+
+<a class="home-btn" href="../">🏠 Home</a>
+
+<header>
+  <h1>🕐 Luna's Clock Quest 🐬</h1>
+  <p>Learn to read the clock with the dolphins!</p>
+</header>
+
+<!-- ============ MAIN MENU ============ -->
+<div id="menu" class="menu">
+  <div class="menu-card" onclick="startMode('read')">
+    <span class="icon">🌊</span>
+    <h2>Read the Clock</h2>
+    <p>Look at the clock and pick the right time. 10 questions!</p>
+    <span class="tag">Hours • Halves • Quarters • 5-min</span>
+  </div>
+  <div class="menu-card" onclick="startMode('match')">
+    <span class="icon">🐚</span>
+    <h2>Tide Match</h2>
+    <p>Flip cards and match the clock to its digital time. Memory game!</p>
+    <span class="tag">Memory • 8 pairs</span>
+  </div>
+  <div class="menu-card" onclick="startMode('set')">
+    <span class="icon">🐠</span>
+    <h2>Set the Clock</h2>
+    <p>Move the hour and minute hands to match the digital time!</p>
+    <span class="tag">Build • Hands</span>
+  </div>
+  <div class="menu-card" onclick="startMode('story')">
+    <span class="icon">🐬</span>
+    <h2>Dolphin Time Stories</h2>
+    <p>Word problems about elapsed time. How long did Luna swim?</p>
+    <span class="tag">Word Problems</span>
+  </div>
+</div>
+
+<!-- ============ GAME AREA ============ -->
+<div id="game" class="game-card hidden">
+  <div class="stats">
+    <div class="stat">⭐ Score: <span class="v" id="score">0</span></div>
+    <div class="stat">📊 Q: <span class="v" id="qnum">1</span> / <span id="qtotal">10</span></div>
+    <div class="stat">❤️ Lives: <span class="v" id="lives">3</span></div>
+  </div>
+  <div class="question-area" id="qarea"></div>
+  <div class="feedback" id="feedback"></div>
+  <button class="next-btn hidden" id="nextBtn" onclick="nextQuestion()">Next ➡️</button>
+</div>
+
+<!-- ============ RESULT SCREEN ============ -->
+<div id="result" class="game-card hidden result"></div>
+
+<footer>
+  Made with 💙 for Luna · <a href="https://github.com/kennyR859/Fun_and_games">View on GitHub</a>
+</footer>
+
+</div>
+
+<script>
+/* ==================== BUBBLES ==================== */
+function spawnBubbles(){
+  const b = document.getElementById('bubbles');
+  for(let i=0;i<22;i++){
+    const e = document.createElement('div');
+    e.className = 'bubble';
+    const size = 10 + Math.random()*40;
+    e.style.width = size+'px';
+    e.style.height = size+'px';
+    e.style.left = Math.random()*100+'%';
+    e.style.animationDuration = (8 + Math.random()*10)+'s';
+    e.style.animationDelay = (Math.random()*8)+'s';
+    b.appendChild(e);
+  }
+}
+spawnBubbles();
+
+/* ==================== SOUND ==================== */
+let audioCtx = null;
+function getAudio(){ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+function beep(freq, dur=0.15, type='sine', vol=0.2){
+  try{
+    const ac = getAudio();
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    o.type=type; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, ac.currentTime+dur);
+    o.connect(g); g.connect(ac.destination);
+    o.start(); o.stop(ac.currentTime+dur);
+  }catch(e){}
+}
+function correctSound(){ beep(660,0.12,'sine'); setTimeout(()=>beep(880,0.15,'sine'),120); }
+function wrongSound(){ beep(220,0.25,'sawtooth',0.15); }
+function tickSound(){ beep(440,0.05,'square',0.08); }
+function winSound(){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,0.18,'triangle',0.18),i*120)); }
+
+/* ==================== CONFETTI ==================== */
+function confetti(n=40){
+  const colors=['#ff6b9d','#ffd166','#00b4d8','#90e8a8','#a45ec5'];
+  for(let i=0;i<n;i++){
+    const c=document.createElement('div');
+    c.className='confetti';
+    c.style.left=Math.random()*100+'vw';
+    c.style.background=colors[Math.floor(Math.random()*colors.length)];
+    c.style.animationDelay=(Math.random()*0.5)+'s';
+    c.style.transform=`rotate(${Math.random()*360}deg)`;
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(),3000);
+  }
+}
+
+/* ==================== CLOCK SVG GENERATOR ==================== */
+function clockSVG(hour, minute, size=200, opts={}){
+  const cx=100, cy=100, r=88;
+  const showHour = opts.showHour !== false;
+  const showMinute = opts.showMinute !== false;
+  const minuteAngle = minute * 6 - 90;            // deg, 0=12 (-90 in math)
+  const hourAngle = ((hour%12) * 30 + minute * 0.5) - 90;
+  const mRad = minuteAngle * Math.PI / 180;
+  const hRad = hourAngle * Math.PI / 180;
+  const mEnd = {x: cx + 70*Math.cos(mRad), y: cy + 70*Math.sin(mRad)};
+  const hEnd = {x: cx + 50*Math.cos(hRad), y: cy + 50*Math.sin(hRad)};
+  const nums = [];
+  for(let n=1;n<=12;n++){
+    const a = (n*30 - 90) * Math.PI/180;
+    const x = cx + 76*Math.cos(a);
+    const y = cy + 76*Math.sin(a) + 5;
+    nums.push(`<text x="${x}" y="${y}" text-anchor="middle" font-size="14" font-weight="bold" fill="#013a63">${n}</text>`);
+  }
+  const ticks = [];
+  for(let i=0;i<60;i++){
+    const a = (i*6 - 90) * Math.PI/180;
+    const isHour = i%5===0;
+    const inner = isHour ? r-8 : r-4;
+    const x1 = cx + inner*Math.cos(a);
+    const y1 = cy + inner*Math.sin(a);
+    const x2 = cx + r*Math.cos(a);
+    const y2 = cy + r*Math.sin(a);
+    ticks.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${isHour?'#0077b6':'#aaa'}" stroke-width="${isHour?2:1}"/>`);
+  }
+  const hourHand = showHour ? `<line x1="${cx}" y1="${cy}" x2="${hEnd.x}" y2="${hEnd.y}" stroke="#ff6b9d" stroke-width="7" stroke-linecap="round"/>` : '';
+  const minHand = showMinute ? `<line x1="${cx}" y1="${cy}" x2="${mEnd.x}" y2="${mEnd.y}" stroke="#0077b6" stroke-width="3.5" stroke-linecap="round"/>` : '';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 200 200" style="display:block">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="#fffaf0" stroke="#0077b6" stroke-width="4"/>
+    ${ticks.join('')}
+    ${nums.join('')}
+    ${hourHand}
+    ${minHand}
+    <circle cx="${cx}" cy="${cy}" r="6" fill="#013a63"/>
+  </svg>`;
+}
+
+function fmtTime(h, m){ return `${h}:${String(m).padStart(2,'0')}`; }
+
+/* ==================== STATE ==================== */
+const state = {
+  mode: null, score: 0, lives: 3, qIndex: 0, total: 10,
+  current: null, answered: false,
+};
+
+const $ = id => document.getElementById(id);
+
+function show(id){ $(id).classList.remove('hidden'); }
+function hide(id){ $(id).classList.add('hidden'); }
+function backToMenu(){
+  hide('game'); hide('result'); show('menu');
+  state.mode=null;
+}
+
+/* ==================== MODE: READ ==================== */
+function genReadQuestion(qIdx){
+  // Difficulty curve: easier first
+  let h, m;
+  if(qIdx < 3){
+    // o'clock
+    h = 1 + Math.floor(Math.random()*12);
+    m = 0;
+  } else if(qIdx < 6){
+    // half / quarter
+    h = 1 + Math.floor(Math.random()*12);
+    m = [0, 15, 30, 45][Math.floor(Math.random()*4)];
+  } else {
+    // 5-min increments
+    h = 1 + Math.floor(Math.random()*12);
+    m = Math.floor(Math.random()*12) * 5;
+  }
+  const correct = fmtTime(h, m);
+  const choices = new Set([correct]);
+  while(choices.size < 4){
+    let dh = h + (Math.random()<0.5 ? 0 : (Math.random()<0.5?-1:1));
+    if(dh<1) dh=1; if(dh>12) dh=12;
+    let dm = (m + ([5,10,15,30,-15,-5][Math.floor(Math.random()*6)] + 60))%60;
+    if(qIdx<3) dm = [0,30,15,45][Math.floor(Math.random()*4)];
+    if(qIdx<6) dm = [0,15,30,45][Math.floor(Math.random()*4)];
+    choices.add(fmtTime(dh, dm));
+  }
+  const arr = Array.from(choices).sort(()=>Math.random()-0.5);
+  return {h, m, correct, choices: arr};
+}
+function renderRead(){
+  const q = state.current;
+  $('qarea').innerHTML = `
+    <div class="clock-display">${clockSVG(q.h, q.m, 220)}</div>
+    <div class="question-text">What time is it? 🕐</div>
+    <div class="choices">
+      ${q.choices.map(c => `<button class="choice" data-c="${c}" onclick="answerRead('${c}')">${c}</button>`).join('')}
+    </div>
+  `;
+}
+function answerRead(c){
+  if(state.answered) return;
+  state.answered = true;
+  const q = state.current;
+  document.querySelectorAll('.choice').forEach(b=>{
+    if(b.dataset.c===q.correct) b.classList.add('correct');
+    else if(b.dataset.c===c) b.classList.add('wrong');
+    b.disabled = true;
+  });
+  if(c===q.correct){
+    state.score += 10;
+    $('feedback').textContent = pickPraise();
+    $('feedback').className = 'feedback good';
+    correctSound();
+    confetti(20);
+  } else {
+    state.lives -= 1;
+    $('feedback').textContent = `Oops! It was ${q.correct}. ${pickEncourage()}`;
+    $('feedback').className = 'feedback bad';
+    wrongSound();
+  }
+  updateStats();
+  show('nextBtn');
+  if(state.lives<=0) setTimeout(endGame, 900);
+}
+
+/* ==================== MODE: MATCH ==================== */
+let matchState = null;
+function genMatchPairs(n=8){
+  // n unique times → 2n cards (one analog + one digital each)
+  const times = [];
+  const used = new Set();
+  while(times.length < n){
+    const h = 1+Math.floor(Math.random()*12);
+    const m = [0,15,30,45,5,10,20,25,35,40,50,55][Math.floor(Math.random()*12)];
+    const key = `${h}:${m}`;
+    if(!used.has(key)){ used.add(key); times.push({h,m,key}); }
+  }
+  const cards = [];
+  times.forEach((t,i)=>{
+    cards.push({pair:i, type:'clock', h:t.h, m:t.m});
+    cards.push({pair:i, type:'digital', h:t.h, m:t.m});
+  });
+  return cards.sort(()=>Math.random()-0.5);
+}
+function renderMatch(){
+  matchState = { cards: genMatchPairs(8), flipped: [], matched: 0, moves: 0 };
+  $('qarea').innerHTML = `
+    <div class="question-text">Match the clock to the digital time! 🐚<br><span style="font-size:.85em;color:#666">${matchState.cards.length/2} pairs · find them all</span></div>
+    <div class="match-grid" id="matchGrid"></div>
+  `;
+  const grid = $('matchGrid');
+  matchState.cards.forEach((c,i)=>{
+    const el = document.createElement('div');
+    el.className = 'match-card';
+    el.dataset.idx = i;
+    el.textContent = '?';
+    el.onclick = () => flipCard(i);
+    grid.appendChild(el);
+  });
+  $('qnum').textContent = '—';
+  $('qtotal').textContent = '8';
+}
+function flipCard(idx){
+  if(state.answered) return;
+  const card = matchState.cards[idx];
+  const el = document.querySelector(`.match-card[data-idx="${idx}"]`);
+  if(el.classList.contains('flipped') || el.classList.contains('matched')) return;
+  if(matchState.flipped.length>=2) return;
+  el.classList.add('flipped');
+  if(card.type==='digital'){
+    el.innerHTML = `<span style="font-family:'Courier New',monospace;font-size:.7em">${fmtTime(card.h,card.m)}</span>`;
+  } else {
+    el.innerHTML = clockSVG(card.h, card.m, 100);
+  }
+  tickSound();
+  matchState.flipped.push({idx, card, el});
+  if(matchState.flipped.length===2) setTimeout(checkMatch, 700);
+}
+function checkMatch(){
+  const [a,b] = matchState.flipped;
+  if(a.card.pair === b.card.pair){
+    a.el.classList.add('matched'); b.el.classList.add('matched');
+    matchState.matched++;
+    state.score += 15;
+    correctSound();
+    $('feedback').textContent = pickPraise();
+    $('feedback').className = 'feedback good';
+    confetti(15);
+    if(matchState.matched===8){
+      setTimeout(()=>{ state.answered=true; endGame(); }, 700);
+    }
+  } else {
+    a.el.classList.remove('flipped'); b.el.classList.remove('flipped');
+    a.el.textContent='?'; b.el.textContent='?';
+    state.lives = Math.max(0, state.lives - 0); // no life loss on memory mismatch
+    wrongSound();
+    $('feedback').textContent = "Not a match. Try again! 🌊";
+    $('feedback').className = 'feedback bad';
+  }
+  matchState.flipped = [];
+  matchState.moves++;
+  updateStats();
+}
+
+/* ==================== MODE: SET ==================== */
+let setState = null;
+function genSetQuestion(qIdx){
+  let h, m;
+  if(qIdx<3){ h=1+Math.floor(Math.random()*12); m=0; }
+  else if(qIdx<6){ h=1+Math.floor(Math.random()*12); m=[15,30,45][Math.floor(Math.random()*3)]; }
+  else { h=1+Math.floor(Math.random()*12); m=Math.floor(Math.random()*12)*5; }
+  return { target:{h,m}, current:{h:12,m:0} };
+}
+function renderSet(){
+  state.current = genSetQuestion(state.qIndex);
+  setState = state.current;
+  drawSetClock();
+}
+function drawSetClock(){
+  const t = setState.target, c = setState.current;
+  $('qarea').innerHTML = `
+    <div class="set-clock-area">
+      <div>Set the clock to: <span class="set-target">${fmtTime(t.h,t.m)}</span></div>
+      <div class="clock-display" id="setClock">${clockSVG(c.h, c.m, 220)}</div>
+      <div class="set-controls">
+        <div class="set-control">
+          <label>🩷 Hour Hand</label>
+          <div class="set-buttons">
+            <button onclick="setAdj('h',-1)">−</button>
+            <span class="val" id="setH">${c.h}</span>
+            <button onclick="setAdj('h',1)">+</button>
+          </div>
+        </div>
+        <div class="set-control">
+          <label>💙 Minute Hand</label>
+          <div class="set-buttons">
+            <button onclick="setAdj('m',-5)">−5</button>
+            <span class="val" id="setM">${String(c.m).padStart(2,'0')}</span>
+            <button onclick="setAdj('m',5)">+5</button>
+          </div>
+        </div>
+      </div>
+      <button class="next-btn" onclick="checkSet()">Check ✓</button>
+    </div>
+  `;
+}
+function setAdj(which, delta){
+  if(state.answered) return;
+  if(which==='h'){
+    setState.current.h = ((setState.current.h - 1 + delta + 12) % 12) + 1;
+  } else {
+    setState.current.m = (setState.current.m + delta + 60) % 60;
+  }
+  tickSound();
+  $('setClock').innerHTML = clockSVG(setState.current.h, setState.current.m, 220);
+  $('setH').textContent = setState.current.h;
+  $('setM').textContent = String(setState.current.m).padStart(2,'0');
+}
+function checkSet(){
+  if(state.answered) return;
+  state.answered = true;
+  const t = setState.target, c = setState.current;
+  if(t.h===c.h && t.m===c.m){
+    state.score += 12;
+    $('feedback').textContent = pickPraise();
+    $('feedback').className = 'feedback good';
+    correctSound(); confetti(20);
+  } else {
+    state.lives -= 1;
+    $('feedback').textContent = `Almost! The answer was ${fmtTime(t.h,t.m)}. ${pickEncourage()}`;
+    $('feedback').className = 'feedback bad';
+    wrongSound();
+  }
+  updateStats();
+  show('nextBtn');
+  if(state.lives<=0) setTimeout(endGame, 900);
+}
+
+/* ==================== MODE: STORY ==================== */
+const stories = [
+  { text: "🐬 Luna started swimming at <b>2:00</b> and stopped at <b>2:30</b>. How many minutes did she swim?", correct: "30 minutes",
+    choices:["30 minutes","60 minutes","15 minutes","45 minutes"], hint:"From :00 to :30 is half an hour." },
+  { text: "🐚 Luna's reading time started at <b>7:00</b> and ended at <b>8:00</b>. How long did she read?", correct: "1 hour",
+    choices:["30 minutes","1 hour","2 hours","45 minutes"], hint:"From 7 to 8 is one full hour." },
+  { text: "🌊 The dolphin show began at <b>1:00</b> and lasted <b>2 hours</b>. What time did it end?", correct: "3:00",
+    choices:["2:00","3:00","4:00","2:30"], hint:"1:00 + 2 hours = 3:00" },
+  { text: "🐠 Luna got home at <b>3:15</b> and started homework at <b>3:30</b>. How many minutes did she rest?", correct: "15 minutes",
+    choices:["10 minutes","15 minutes","30 minutes","45 minutes"], hint:"3:30 − 3:15 = 15 minutes (a quarter)." },
+  { text: "🦈 The pool opens at <b>9:00 AM</b> and closes at <b>12:00 PM</b>. How many hours is it open?", correct: "3 hours",
+    choices:["2 hours","3 hours","4 hours","12 hours"], hint:"9 → 10 → 11 → 12 = 3 hours" },
+  { text: "🐳 Luna's nap started at <b>1:30</b> and ended at <b>2:15</b>. How long did she nap?", correct: "45 minutes",
+    choices:["30 minutes","45 minutes","1 hour","15 minutes"], hint:"1:30 → 2:00 (30 min) → 2:15 (15 more) = 45 min" },
+  { text: "🌅 Sunrise was at <b>6:00 AM</b>. Luna woke up <b>30 minutes later</b>. What time?", correct: "6:30",
+    choices:["6:30","7:00","5:30","6:15"], hint:"6:00 + 30 minutes = 6:30" },
+  { text: "🍦 Ice-cream truck arrives at <b>4:45</b> and leaves at <b>5:00</b>. How many minutes does it stay?", correct: "15 minutes",
+    choices:["15 minutes","30 minutes","45 minutes","1 hour"], hint:"4:45 → 5:00 is a quarter of an hour." },
+  { text: "🎂 Luna's birthday party starts at <b>2:30</b> and runs for <b>1 hour and 30 minutes</b>. End time?", correct: "4:00",
+    choices:["3:30","4:00","4:30","3:00"], hint:"2:30 + 1:30 = 4:00" },
+  { text: "🐢 The turtle walks for <b>2 hours</b> starting at <b>10:00</b>. What time is the turtle done?", correct: "12:00",
+    choices:["11:00","12:00","1:00","2:00"], hint:"10 + 2 = 12 o'clock" },
+];
+function genStoryQuestion(qIdx){
+  return stories[qIdx % stories.length];
+}
+function renderStory(){
+  const q = state.current;
+  $('qarea').innerHTML = `
+    <div style="font-size:1.4em;line-height:1.6;margin:14px auto;max-width:560px">${q.text}</div>
+    <div class="choices">
+      ${q.choices.map(c => `<button class="choice" data-c="${c}" onclick="answerStory('${c.replace(/'/g,"\\'")}')">${c}</button>`).join('')}
+    </div>
+    <div style="font-size:.9em;color:#666;margin-top:8px">💡 ${q.hint}</div>
+  `;
+}
+function answerStory(c){
+  if(state.answered) return;
+  state.answered = true;
+  const q = state.current;
+  document.querySelectorAll('.choice').forEach(b=>{
+    if(b.dataset.c===q.correct) b.classList.add('correct');
+    else if(b.dataset.c===c) b.classList.add('wrong');
+    b.disabled = true;
+  });
+  if(c===q.correct){
+    state.score += 10;
+    $('feedback').textContent = pickPraise();
+    $('feedback').className = 'feedback good';
+    correctSound(); confetti(20);
+  } else {
+    state.lives -= 1;
+    $('feedback').textContent = `Not quite! It was ${q.correct}. ${pickEncourage()}`;
+    $('feedback').className = 'feedback bad';
+    wrongSound();
+  }
+  updateStats();
+  show('nextBtn');
+  if(state.lives<=0) setTimeout(endGame, 900);
+}
+
+/* ==================== PRAISE / ENCOURAGE ==================== */
+const praises = [
+  "🌊 Awesome!", "🐬 Splash-tastic!", "🌟 Perfect!", "🐚 Brilliant, Luna!",
+  "🎉 Way to go!", "💙 Tide-rrific!", "🦈 Fin-tastic!", "✨ You got it!",
+  "🌅 Crystal clear!", "🐳 Whale done!"
+];
+const encourages = [
+  "🐢 Slow and steady — try the next one!",
+  "🐠 Take a deep breath, you'll get it!",
+  "💪 Almost there — keep going!",
+  "🌈 Mistakes help us learn!",
+  "🐬 Dolphins believe in you!",
+  "🌊 Wave it off and try again!"
+];
+function pickPraise(){ return praises[Math.floor(Math.random()*praises.length)]; }
+function pickEncourage(){ return encourages[Math.floor(Math.random()*encourages.length)]; }
+
+/* ==================== FLOW ==================== */
+function startMode(mode){
+  state.mode = mode;
+  state.score = 0;
+  state.lives = 3;
+  state.qIndex = 0;
+  state.total = mode==='match' ? 8 : 10;
+  state.answered = false;
+  hide('menu'); hide('result'); show('game');
+  $('qtotal').textContent = state.total;
+  updateStats();
+  hide('nextBtn');
+  $('feedback').textContent='';
+  if(mode==='match'){
+    renderMatch();
+  } else {
+    nextQuestion(true);
+  }
+}
+function nextQuestion(initial=false){
+  if(state.lives<=0){ endGame(); return; }
+  if(!initial){
+    state.qIndex++;
+    if(state.qIndex >= state.total){ endGame(); return; }
+  }
+  state.answered = false;
+  hide('nextBtn');
+  $('feedback').textContent='';
+  $('feedback').className='feedback';
+  if(state.mode==='read'){
+    state.current = genReadQuestion(state.qIndex);
+    renderRead();
+  } else if(state.mode==='set'){
+    renderSet();
+  } else if(state.mode==='story'){
+    state.current = genStoryQuestion(state.qIndex);
+    renderStory();
+  }
+  updateStats();
+}
+function updateStats(){
+  $('score').textContent = state.score;
+  $('qnum').textContent = Math.min(state.qIndex+1, state.total);
+  const heart = '❤️'.repeat(Math.max(0,state.lives));
+  $('lives').textContent = state.lives;
+}
+function endGame(){
+  hide('game');
+  show('result');
+  const max = state.mode==='match' ? 8*15 : (state.mode==='set' ? 10*12 : 10*10);
+  const pct = Math.round((state.score/max)*100);
+  let stars = '⭐⭐⭐';
+  if(pct < 60) stars = '⭐';
+  else if(pct < 85) stars = '⭐⭐';
+  let comment, emoji;
+  if(pct >= 90){ comment = "Wow Luna! You are a true Clock Master! 🐬👑"; emoji = '🏆'; }
+  else if(pct >= 75){ comment = "Great job! You really know your clocks! 🌊"; emoji = '🎉'; }
+  else if(pct >= 60){ comment = "Nice work! A little more practice and you'll be a Tide Master!"; emoji = '🐚'; }
+  else if(pct >= 40){ comment = "Good try! Let's swim through it again — you're learning!"; emoji = '🐠'; }
+  else { comment = "Every dolphin starts somewhere! Try again — Mr. Kenny believes in you!"; emoji = '🐬'; }
+  $('result').innerHTML = `
+    <div style="font-size:5em">${emoji}</div>
+    <div class="stars">${stars}</div>
+    <h2>${pct}%</h2>
+    <div class="score-breakdown">Score: ${state.score} · Questions: ${state.qIndex + (state.mode==='match'?0:1)} / ${state.total}</div>
+    <div class="result-comment">${comment}</div>
+    <div style="margin-top:14px">
+      <button class="play-again-btn" onclick="startMode('${state.mode}')">🔁 Play Again</button>
+      <button class="play-again-btn" style="background:#0077b6;margin-left:8px" onclick="backToMenu()">🏠 Menu</button>
+    </div>
+  `;
+  if(pct>=75){ winSound(); confetti(80); }
+}
+</script>
+
+</body>
+</html>
